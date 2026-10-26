@@ -1,1 +1,75 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 
+# Thiết lập seed cố định để đồng nhất với dữ liệu đã chạy ở Bài 2 trước đó
+np.random.seed(42)
+n_samples = 200
+bmi = np.random.uniform(15, 38, (n_samples, 1))
+log_odds = 0.4 * (bmi - 25)
+probability = 1 / (1 + np.exp(-log_odds))
+mac_benh = np.random.binomial(1, probability).ravel()
+
+# Chia tập dữ liệu
+X_train, X_test, y_train, y_test = train_test_split(bmi, mac_benh, test_size=0.25, random_state=42)
+
+# Huấn luyện mô hình Hồi quy Logistic
+model_threshold = LogisticRegression()
+model_experiment = model_threshold.fit(X_train, y_train)
+
+# Dự đoán xác suất liên tục trên tập kiểm tra (chứ không lấy nhãn mặc định 0.5)
+y_prob_test = model_threshold.predict_proba(X_test)[:, 1]
+
+# Danh sách các ngưỡng xác suất cần thử nghiệm
+thresholds = [0.3, 0.5, 0.7]
+
+print("=== THỰC NGHIỆM THAY ĐỔI NGƯỠNG DỰ ĐOÁN XÁC SUẤT ===\n")
+
+plt.figure(figsize=(18, 5))
+
+for i, threshold in enumerate(thresholds, 1):
+    # Gán nhãn thủ công dựa trên ngưỡng mới:
+    # Nếu xác suất >= threshold thì là 1 (Mắc bệnh), ngược lại là 0 (Khỏe mạnh)
+    y_pred_custom = (y_prob_test >= threshold).astype(int)
+    
+    acc = accuracy_score(y_test, y_pred_custom)
+    cm = confusion_matrix(y_test, y_pred_custom)
+    
+    print(f"[Ngưỡng xác suất = {threshold}]")
+    print(f"  - Độ chính xác (Accuracy): {acc:.4f} ({acc*100:.2f}%)")
+    print(f"  - Ma trận nhầm lẫn:")
+    print(f"      [{cm[0][0]} ca Thực tế Khỏe mạnh được đoán đúng là Khỏe mạnh | {cm[0][1]} ca bị đoán nhầm sang Mắc bệnh]")
+    print(f"      [{cm[1][0]} ca Thực tế Mắc bệnh bị đoán nhầm sang Khỏe mạnh  | {cm[1][1]} ca được đoán đúng là Mắc bệnh]")
+    print("-" * 80)
+    
+    # Trực quan hóa ranh giới tương ứng với từng ngưỡng
+    plt.subplot(1, 3, i)
+    plt.scatter(X_test[y_test == 0], y_test[y_test == 0], color='blue', alpha=0.7, label='Khỏe mạnh (0)')
+    plt.scatter(X_test[y_test == 1], y_test[y_test == 1], color='red', alpha=0.7, label='Mắc bệnh (1)')
+    
+    # Vẽ đường cong sigmoid dự đoán
+    X_curve = np.linspace(15, 38, 300).reshape(-1, 1)
+    y_curve_prob = model_threshold.predict_proba(X_curve)[:, 1]
+    plt.plot(X_curve, y_curve_prob, color='green', linewidth=2, label='Đường cong Sigmoid')
+    
+    # Tìm giá trị BMI tương ứng tại vị trí xác suất đạt mức ngưỡng (threshold)
+    # log_odds = w * x + b => x = (ln(p / (1 - p)) - b) / w
+    w = model_threshold.coef_[0][0]
+    b = model_threshold.intercept_[0]
+    custom_boundary = (np.log(threshold / (1 - threshold)) - b) / w
+    
+    plt.axvline(x=custom_boundary, color='orange', linestyle='--', 
+                label=f'Ranh giới tại BMI ~ {custom_boundary:.1f}')
+    plt.axhline(y=threshold, color='purple', linestyle=':', label=f'Ngưỡng p = {threshold}')
+    
+    plt.title(f"Ngưỡng p = {threshold}\nAccuracy = {acc:.2f}")
+    plt.xlabel("BMI")
+    plt.ylabel("Xác suất / Nhãn")
+    plt.legend(loc='lower right')
+    plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
