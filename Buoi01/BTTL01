@@ -1,1 +1,104 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
 
+# Thiết lập seed để kết quả đồng nhất 
+np.random.seed(42)
+
+# =====================================================================
+# 1. Hồi quy tuyến tính đơn giản (Diện tích -> Giá bán)
+# =====================================================================
+print("=== 1. HỒI QUY TUYẾN TÍNH ĐƠN GIẢN ===")
+# Giả lập dữ liệu: 80 căn nhà
+dien_tich = np.random.uniform(30, 150, (80, 1)) # Diện tích từ 30m2 đến 150m2
+# Giá bán = 15 triệu * diện tích + 200 triệu (nhiễu nhẹ)
+gia_ban = 15 * dien_tich + 200 + np.random.normal(0, 100, (80, 1))
+
+X_train, X_test, y_train, y_test = train_test_split(dien_tich, gia_ban, test_size=0.2, random_state=42)
+
+model_simple = LinearRegression()
+model_simple.fit(X_train, y_train)
+y_pred = model_simple.predict(X_test)
+
+print(f"Hệ số góc (Slope): {model_simple.coef_[0][0]:.2f}")
+print(f"Hệ số chặn (Intercept): {model_simple.intercept_[0]:.2f}")
+print(f"R2 Score: {r2_score(y_test, y_pred):.4f}\n")
+
+# Vẽ biểu đồ kết quả
+plt.figure(figsize=(14, 5))
+plt.subplot(1, 2, 1)
+plt.scatter(X_test, y_test, color='blue', label='Thực tế')
+plt.plot(X_test, y_pred, color='red', linewidth=2, label='Dự báo')
+plt.title("Diện tích vs Giá bán (Đơn giản)")
+plt.xlabel("Diện tích (m2)")
+plt.ylabel("Giá bán (triệu VND)")
+plt.legend()
+
+# =====================================================================
+# 2. Thêm nhiều dữ liệu và tăng độ nhiễu
+# =====================================================================
+print("=== 2. TĂNG DỮ LIỆU VÀ TĂNG ĐỘ NHIỄU ===")
+# Tăng lên 500 căn nhà và tăng độ nhiễu lên gấp 3 lần
+dien_tich_noisy = np.random.uniform(30, 150, (500, 1))
+gia_ban_noisy = 15 * dien_tich_noisy + 200 + np.random.normal(0, 300, (500, 1))
+
+X_train_n, X_test_n, y_train_n, y_test_n = train_test_split(dien_tich_noisy, gia_ban_noisy, test_size=0.2, random_state=42)
+
+model_noisy = LinearRegression()
+model_noisy.fit(X_train_n, y_train_n)
+y_pred_n = model_noisy.predict(X_test_n)
+
+print(f"Hệ số góc mới: {model_noisy.coef_[0][0]:.2f}")
+print(f"Hệ số chặn mới: {model_noisy.intercept_[0]:.2f}")
+print(f"R2 Score sau khi tăng nhiễu: {r2_score(y_test_n, y_pred_n):.4f} (R2 giảm do nhiễu lớn hơn)\n")
+
+plt.subplot(1, 2, 2)
+plt.scatter(X_test_n, y_test_n, color='green', alpha=0.6, label='Dữ liệu nhiễu cao')
+plt.plot(X_test_n, y_pred_n, color='red', linewidth=2, label='Dự báo')
+plt.title("Diện tích vs Giá bán (Nhiều nhiễu hơn)")
+plt.xlabel("Diện tích (m2)")
+plt.ylabel("Giá bán (triệu VND)")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# =====================================================================
+# 3. Thêm các biến đầu vào để nâng cao tính phức tạp (Hồi quy đa biến)
+# =====================================================================
+print("=== 3. HỒI QUY ĐA BIẾN (Thêm biến số phòng ngủ và khoảng cách) ===")
+# Giả lập 300 mẫu dữ liệu
+n_samples = 300
+X1_dtich = np.random.uniform(30, 150, n_samples)                  # Diện tích
+X2_phong = np.random.randint(1, 6, n_samples)                      # Số phòng ngủ (1 đến 5 phòng)
+X3_khoang_cach = np.random.uniform(0.5, 15.0, n_samples)           # Khoảng cách đến trung tâm (km)
+
+# Giá bán phụ thuộc vào diện tích (+), số phòng (+), khoảng cách trung tâm (-)
+Y_gia_ban = 12 * X1_dtich + 80 * X2_phong - 25 * X3_khoang_cach + 150 + np.random.normal(0, 80, n_samples)
+
+# Tạo DataFrame để quản lý dữ liệu
+df_house = pd.DataFrame({
+    'Dien_Tich': X1_dtich,
+    'So_Phong': X2_phong,
+    'Khoang_Cach_TT': X3_khoang_cach,
+    'Gia_Ban': Y_gia_ban
+})
+
+display(df_house.head())
+
+X_multi = df_house[['Dien_Tich', 'So_Phong', 'Khoang_Cach_TT']]
+y_multi = df_house['Gia_Ban']
+
+X_train_m, X_test_m, y_train_m, y_test_m = train_test_split(X_multi, y_multi, test_size=0.2, random_state=42)
+
+model_multi = LinearRegression()
+model_multi.fit(X_train_m, y_train_m)
+y_pred_m = model_multi.predict(X_test_m)
+
+print("\n--- KẾT QUẢ MÔ HÌNH ĐA BIẾN ---")
+for col, coef in zip(X_multi.columns, model_multi.coef_):
+    print(f"Hệ số cho biến [{col}]: {coef:.2f}")
+print(f"Hệ số chặn (Intercept): {model_multi.intercept_:.2f}")
+print(f"R2 Score (Đa biến): {r2_score(y_test_m, y_pred_m):.4f}")
