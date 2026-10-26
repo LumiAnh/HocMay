@@ -1,1 +1,54 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score
 
+# =====================================================================
+# BÀI 1: THAY ĐỔI ĐIỀU KIỆN SINH DỮ LIỆU & KIỂM TRA ĐỘ CHÍNH XÁC
+# =====================================================================
+
+# Bạn có thể tự ý thay đổi các thông số dưới đây để thử nghiệm:
+np.random.seed(42)            # Cố định bộ sinh số ngẫu nhiên
+n_samples = 200               # Tổng số mẫu dữ liệu sinh ra
+noise_std = 150               # ĐỘ NHIỄU (Tăng số này để thấy R2 giảm mạnh và dữ liệu phân tán rộng)
+true_slope = 15               # Hệ số góc thực tế mong muốn
+true_intercept = 200          # Hệ số chặn thực tế mong muốn
+
+# 1. Sinh dữ liệu giả lập diện tích và giá nhà dựa trên tham số tùy chỉnh
+X_custom = np.random.uniform(30, 150, (n_samples, 1))
+noise = np.random.normal(0, noise_std, size=X_custom.shape)
+y_custom = true_slope * X_custom + true_intercept + noise
+
+# 2. Phân chia dữ liệu Train (80%) và Test (20%)
+X_train, X_test, y_train, y_test = train_test_split(X_custom, y_custom, test_size=0.2, random_state=42)
+
+# 3. Khởi tạo và huấn luyện mô hình
+model_custom = LinearRegression()
+model_custom.fit(X_train, y_train)
+
+# 4. Dự báo trên tập kiểm tra
+y_pred = model_custom.predict(X_test)
+
+# 5. Đánh giá độ chính xác
+mse_custom = mean_squared_error(y_test, y_pred)
+r2_custom = r2_score(y_test, y_pred)
+
+# In kết quả
+print("=== KẾT QUẢ THỰC NGHIỆM TRÊN DỮ LIỆU TÙY CHỈNH ===")
+print(f"Thiết lập độ nhiễu thực tế (Noise Std): {noise_std}")
+print(f"Hệ số góc dự báo (Estimated Slope): {model_custom.coef_[0][0]:.2f} (Gốc: {true_slope})")
+print(f"Hệ số chặn dự báo (Estimated Intercept): {model_custom.intercept_[0]:.2f} (Gốc: {true_intercept})")
+print(f"Mean Squared Error (MSE): {mse_custom:.2f}")
+print(f"R^2 Score (Độ chính xác): {r2_custom:.4f} ({r2_custom*100:.2f}%)")
+
+# 6. Trực quan hóa đường hồi quy tuyến tính
+plt.figure(figsize=(9, 6))
+plt.scatter(X_test, y_test, color='dodgerblue', alpha=0.7, edgecolors='k', label='Dữ liệu thực tế (Tập Test)')
+plt.plot(X_test, y_pred, color='crimson', linewidth=3, label=f'Đường hồi quy dự đoán\n(R2 = {r2_custom:.4f})')
+plt.title(f"Hồi quy Tuyến tính đơn biến với độ nhiễu Std = {noise_std}", fontsize=13)
+plt.xlabel("Diện tích (m2)")
+plt.ylabel("Giá bán (triệu VND)")
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
