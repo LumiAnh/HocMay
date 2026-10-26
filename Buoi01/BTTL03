@@ -1,0 +1,75 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+# =====================================================================
+# 1. Đọc tệp dữ liệu thực tế từ file genshin_impact.csv
+# =====================================================================
+csv_path = '/content/genshin_impact.csv'
+df_genshin = pd.read_csv(csv_path)
+
+print("=== THÔNG TIN BỘ DỮ LIỆU GENSHIN IMPACT ===")
+print(f"Kích thước: {df_genshin.shape}")
+display(df_genshin.head())
+print("\nCác cột dữ liệu và kiểu dữ liệu:")
+print(df_genshin.info())
+
+# =====================================================================
+# 2. Tiền xử lý tự động để chọn các cột số phù hợp cho Hồi quy
+# =====================================================================
+# Lọc lấy các cột định lượng (numeric)
+numeric_cols = df_genshin.select_dtypes(include=[np.number]).columns.tolist()
+print(f"\nCác cột dạng số tìm thấy: {numeric_cols}")
+
+if len(numeric_cols) >= 2:
+    # Giả định chọn cột số cuối cùng làm biến mục tiêu (target), các cột còn lại làm đặc trưng (features)
+    target_col = numeric_cols[-1]
+    feature_cols = numeric_cols[:-1]
+    
+    # Loại bỏ các hàng chứa giá trị rỗng (NaN) nếu có
+    df_clean = df_genshin[numeric_cols].dropna()
+    
+    X = df_clean[feature_cols]
+    y = df_clean[target_col]
+    
+    print(f"\nĐang tiến hành hồi quy dự đoán biến [{target_col}] dựa trên các biến: {feature_cols}")
+    
+    # =====================================================================
+    # 3. Phân chia Train - Test và huấn luyện
+    # =====================================================================
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    model_genshin = LinearRegression()
+    model_genshin.fit(X_train, y_train)
+    
+    y_pred = model_genshin.predict(X_test)
+    
+    # =====================================================================
+    # 4. Đánh giá mô hình
+    # =====================================================================
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+    
+    print("\n=== KẾT QUẢ ĐÁNH GIÁ MÔ HÌNH ===")
+    print(f"Mean Squared Error (MSE): {mse:.4f}")
+    print(f"R^2 Score: {r2:.4f}")
+    
+    # =====================================================================
+    # 5. Trực quan hóa kết quả thực tế vs dự báo
+    # =====================================================================
+    plt.figure(figsize=(8, 5))
+    sns.scatterplot(x=y_test, y=y_pred, alpha=0.6, color='coral')
+    ideal_line = np.linspace(y_test.min(), y_test.max(), 100)
+    plt.plot(ideal_line, ideal_line, color='blue', linestyle='--', label='Dự đoán hoàn hảo')
+    plt.title(f"Giá trị Thực tế vs Dự báo của biến [{target_col}]")
+    plt.xlabel("Thực tế")
+    plt.ylabel("Dự báo")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
+else:
+    print("\n[Lỗi] Bộ dữ liệu không có đủ số lượng cột dạng số để thực hiện hồi quy.")
